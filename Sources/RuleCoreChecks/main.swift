@@ -63,6 +63,11 @@ struct Checks {
         let plan = try PlanValidator.parse(json(destination: "Sorted"))
         let action = try PlanValidator.validate(plan, policy: policy, inventory: inventory)[0]
         try check(action.destinationRelativePath == "Sorted/hello.txt", "destination composition")
+        let privateSummary = AgentDisclosure.moveSummaries([action], includeNames: false)[0]
+        try check(privateSummary["source"] == nil && privateSummary["destination"] == nil,
+                  "move tool result must not expose names by default")
+        let namedSummary = AgentDisclosure.moveSummaries([action], includeNames: true)[0]
+        try check(namedSummary["source"] == "hello.txt", "opt-in name disclosure")
         var journal: [JournalEntry] = []
         let moved = try Executor.execute(action, inventory: inventory, policy: policy, planID: UUID()) { journal.append($0) }
         try check(moved.status == .verified && journal.count == 2, "move and transaction log")

@@ -57,6 +57,11 @@ final class RuleCoreTests: XCTestCase {
                                                       reason: "rule", evidence: ["text file"])],
                              clarifications: [])
         let action = try XCTUnwrap(PlanValidator.validate(plan, policy: policy, inventory: inventory).first)
+        let privateSummary = try XCTUnwrap(AgentDisclosure.moveSummaries([action], includeNames: false).first)
+        XCTAssertNil(privateSummary["source"])
+        XCTAssertNil(privateSummary["destination"])
+        let namedSummary = try XCTUnwrap(AgentDisclosure.moveSummaries([action], includeNames: true).first)
+        XCTAssertEqual(namedSummary["source"], "hello.txt")
         var entries: [JournalEntry] = []
         let moved = try Executor.execute(action, inventory: inventory, policy: policy,
                                          planID: UUID()) { entry in entries.append(entry) }

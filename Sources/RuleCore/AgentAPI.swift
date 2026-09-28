@@ -123,6 +123,22 @@ public struct AgentApprovalGate: Sendable {
     }
 }
 
+public enum AgentDisclosure {
+    public static func moveSummaries(_ actions: [ValidatedAction], includeNames: Bool) -> [[String: String]] {
+        actions.map { action in
+            var summary = ["file_id": action.source.id,
+                           "destination_directory": action.proposal.destination,
+                           "rule_id": action.proposal.ruleID,
+                           "reason": action.proposal.reason]
+            if includeNames {
+                summary["source"] = action.source.relativePath
+                summary["destination"] = action.destinationRelativePath
+            }
+            return summary
+        }
+    }
+}
+
 public enum AgentClient {
     public static func complete(config: ModelConfig, apiKey: String,
                                 messages: [AgentMessage]) async throws -> AgentMessage {

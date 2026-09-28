@@ -413,7 +413,9 @@ extension WorkspaceViewModel {
                              "folder_name": shareMetadata ? (state.selectedRootPath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "") : "[not shared]"])
         case "scan_files":
             scan()
-            guard let inventory else { throw RuleError.invalidPlan(notice) }
+            guard let inventory else {
+                throw RuleError.invalidPlan(shareMetadata ? notice : "扫描失败；请在本机检查目录权限。")
+            }
             return try json(["inventory_id": inventory.id, "count": inventory.records.count,
                              "skipped": inventory.skipped, "partial": inventory.isPartial,
                              "error_count": inventory.errors.count])
@@ -438,10 +440,12 @@ extension WorkspaceViewModel {
             }
             let policy = try Policy(text: raw, version: (activePolicy?.version ?? 0) + 1)
             if policy.hash != activePolicy?.hash {
-                state.policies.append(policy)
+                var updated = state
+                updated.policies.append(policy)
+                try store.save(updated)
+                state = updated
                 policyDraft = policy.text
                 clearPlan()
-                try store.save(state)
             }
             return try json(["version": activePolicy?.version ?? 0, "policy_hash": policy.hash,
                              "rule_ids": policy.ruleIDs])
@@ -460,17 +464,14 @@ extension WorkspaceViewModel {
             approvalGate.clear()
             let approvalID = validated.isEmpty ? nil : approvalGate.prepare()
             return try json(["approval_id": approvalID?.uuidString ?? "", "action_count": validated.count,
-                             "actions": validated.map { ["source": $0.source.relativePath,
-                                                        "destination": $0.destinationRelativePath,
-                                                        "rule_id": $0.proposal.ruleID,
-                                                        "reason": $0.proposal.reason] },
+                             "actions": AgentDisclosure.moveSummaries(validated, includeNames: config.includeNames),
                              "clarifications": plan.clarifications,
                              "instruction": "Ask the user to review the preview and say 确认执行. Do not call execute before confirmation."])
         case "list_history":
             return try json(["entries": state.journal.suffix(30).reversed().map { entry in
                 ["entry_id": entry.id.uuidString, "status": entry.status.rawValue,
-                 "source": shareMetadata ? relativeHistoryPath(entry.sourcePath, root: entry.rootPath) : "[not shared]",
-                 "destination": shareMetadata ? relativeHistoryPath(entry.destinationPath, root: entry.rootPath) : "[not shared]"]
+                 "source": shareMetadata && config.includeNames ? relativeHistoryPath(entry.sourcePath, root: entry.rootPath) : "[not shared]",
+                 "destination": shareMetadata && config.includeNames ? relativeHistoryPath(entry.destinationPath, root: entry.rootPath) : "[not shared]"]
             }])
         case "undo_move":
             let asksUndo = latestUserText.contains("撤销") || latestUserText.contains("恢复") ||
@@ -490,7 +491,9 @@ extension WorkspaceViewModel {
             return try json(["entry_id": value, "status": status, "message": notice])
         case "execute_approved_plan":
             guard let value = args["approval_id"] as? String, let id = UUID(uuidString: value),
-                  approvalGate.consume(id) else { throw RuleError.invalidPlan("计划尚未由用户确认或确认已失效。") }
+                  selectedCount > 0, approvalGate.consume(id) else {
+                throw RuleError.invalidPlan("计划尚未确认、没有选中项目或确认已失效。")
+            }
             executeSelected()
             return try json(["message": notice, "remaining_plan_count": actions.count])
         default:
