@@ -1,0 +1,15 @@
+name: Swift
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: swift test
+      - name: Core checks
+        run: swift run RuleCoreChecks
+      - name: Release build
+        run: swift build -c release

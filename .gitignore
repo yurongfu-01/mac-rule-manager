@@ -1,0 +1,9 @@
+.build/
+.swiftpm/
+*.app/
+.DS_Store
+*.xcuserstate
+*.xcuserdata/
+.env
+*.log
+local-data/
