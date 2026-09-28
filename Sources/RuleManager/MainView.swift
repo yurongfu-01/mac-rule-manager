@@ -142,7 +142,7 @@ struct MainView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("目标：\(vm.config.provider.rawValue) · \(vm.endpointHost) · \(vm.config.model)")
                         Text("发送：规范正文、\(inventory.records.count) 个文件 ID、扩展名、大小、相对年龄\(vm.config.includeNames ? "、文件名和相对路径" : "")。")
-                        Text("不发送文件内容或绝对路径。费用未知；请在供应商后台检查价格和额度。")
+                        Text("文件清单不含绝对路径；规范正文原样发送，请检查是否写入敏感信息。费用未知，请在供应商后台检查价格和额度。")
                         Button(vm.isBusy ? "请求中…" : "发送上述数据并生成建议") { vm.generatePlan() }
                             .buttonStyle(.borderedProminent)
                             .disabled(vm.isBusy || inventory.isPartial || vm.activePolicy == nil)
