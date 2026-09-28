@@ -11,6 +11,22 @@ struct Checks {
         do { _ = try Policy(text: "", version: 1); throw RuleError.invalidPlan("empty policy accepted") }
         catch RuleError.invalidPolicy { }
 
+        let toolResponse = Data("""
+        {"choices":[{"message":{"role":"assistant","content":null,"reasoning_content":"thinking","tool_calls":[{"id":"call_1","type":"function","function":{"name":"scan_files","arguments":"{}"}}]}}]}
+        """.utf8)
+        let parsedTool = try AgentClient.parseResponse(toolResponse)
+        try check(parsedTool.toolCalls?.first?.function.name == "scan_files", "tool-call response")
+        try check(parsedTool.reasoningContent == "thinking", "reasoning continuation")
+        do { _ = try AgentToolProtocol.arguments("{\"shell\":\"open\"}", allowed: [])
+             throw RuleError.invalidPlan("unknown tool argument accepted") }
+        catch RuleError.invalidPlan { }
+        var gate = AgentApprovalGate()
+        let approval = gate.prepare()
+        try check(!gate.consume(approval), "unapproved plan refused")
+        try check(!gate.approve(userText: "先别确认执行"), "ambiguous approval refused")
+        try check(gate.approve(userText: "确认执行") && gate.consume(approval), "explicit approval")
+        try check(!gate.consume(approval), "approval is single-use")
+
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("mac-rule-checks-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -69,6 +85,6 @@ struct Checks {
              throw RuleError.invalidPlan("changed source accepted") }
         catch RuleError.fileChanged { }
 
-        print("RuleCoreChecks passed: policy, scan, JSON, traversal, move, conflict, undo, changed file")
+        print("RuleCoreChecks passed: tool calls, approval, policy, scan, JSON, traversal, move, conflict, undo, changed file")
     }
 }

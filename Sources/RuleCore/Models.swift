@@ -53,6 +53,13 @@ public enum Provider: String, CaseIterable, Codable, Identifiable, Sendable {
     case mimo = "小米 MiMo"
 
     public var id: String { rawValue }
+    public var defaultModel: String {
+        switch self {
+        case .openAI: "gpt-4.1-mini"
+        case .deepSeek: "deepseek-flash"
+        case .mimo: "mimo-v2.6-flash"
+        }
+    }
     public var defaultEndpoint: String {
         switch self {
         case .openAI: "https://api.openai.com/v1/chat/completions"
@@ -64,7 +71,7 @@ public enum Provider: String, CaseIterable, Codable, Identifiable, Sendable {
 
 public struct ModelConfig: Codable, Sendable {
     public var provider: Provider = .openAI
-    public var model: String = ""
+    public var model: String = Provider.openAI.defaultModel
     public var endpoint: String = Provider.openAI.defaultEndpoint
     public var includeNames: Bool = false
 

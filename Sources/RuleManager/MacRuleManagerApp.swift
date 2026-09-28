@@ -8,7 +8,7 @@ struct MacRuleManagerApp: App {
         WindowGroup("Mac Rule Manager") {
             MainView()
                 .environmentObject(workspace)
-                .frame(minWidth: 900, minHeight: 650)
+                .frame(minWidth: 1100, minHeight: 690)
         }
     }
 }

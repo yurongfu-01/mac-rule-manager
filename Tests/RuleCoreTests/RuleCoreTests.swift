@@ -3,6 +3,23 @@ import XCTest
 @testable import RuleCore
 
 final class RuleCoreTests: XCTestCase {
+    func testToolCallParsingAndApprovalGate() throws {
+        let response = Data("""
+        {"choices":[{"message":{"role":"assistant","content":null,"reasoning_content":"thinking","tool_calls":[{"id":"call_1","type":"function","function":{"name":"scan_files","arguments":"{}"}}]}}]}
+        """.utf8)
+        let message = try AgentClient.parseResponse(response)
+        XCTAssertEqual(message.toolCalls?.first?.function.name, "scan_files")
+        XCTAssertEqual(message.reasoningContent, "thinking")
+        XCTAssertThrowsError(try AgentToolProtocol.arguments("{\"shell\":\"open\"}", allowed: []))
+        var gate = AgentApprovalGate()
+        let id = gate.prepare()
+        XCTAssertFalse(gate.consume(id))
+        XCTAssertFalse(gate.approve(userText: "先别确认执行"))
+        XCTAssertTrue(gate.approve(userText: "确认执行"))
+        XCTAssertTrue(gate.consume(id))
+        XCTAssertFalse(gate.consume(id))
+    }
+
     func testPolicyRequiresUserRule() throws {
         XCTAssertThrowsError(try Policy(text: "", version: 1))
         XCTAssertThrowsError(try Policy(text: "Just organize things", version: 1))
